@@ -9,15 +9,18 @@ import software.amazon.awscdk.services.lambda.Runtime;
 import software.constructs.Construct;
 
 public class UwrfStack extends Stack {
-    public UwrfStack(final Construct scope, final String id) {
-        this(scope, id, null);
+    private final String studentName;
+
+    public UwrfStack(final Construct scope, final String id, final String studentName) {
+        this(scope, id, null, studentName);
     }
 
-    public UwrfStack(final Construct scope, final String id, final StackProps props) {
+    public UwrfStack(final Construct scope, final String id, final StackProps props, final String studentName) {
         super(scope, id, props);
+        this.studentName = studentName;
 
-        // Lambda function that processes uploaded videos
         Function videoHandler = Function.Builder.create(this, "VideoHandler")
+                .functionName(studentName + "-video-handler")
                 .runtime(Runtime.JAVA_21)
                 .handler("org.uwrf.handlers.VideoHandler::handleRequest")
                 .code(Code.fromAsset("target/lambda.jar"))

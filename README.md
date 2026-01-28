@@ -75,8 +75,10 @@ UWRFCCSample/
 │   │       └── VideoHandler.java # Lambda function - starter code provided, you complete it
 │   └── test/java/org/uwrf/handlers/
 │       └── VideoHandlerTest.java      # Tests for local development
+├── iam/
+│   └── student-policy.json   # IAM policy for student permissions (instructor use)
 ├── pom.xml                   # Maven dependencies (like package.json for Java)
-├── cdk.json                  # CDK configuration
+├── cdk.json                  # CDK configuration (set your studentName here!)
 └── SampleVideo.mp4           # Test video (download separately - see Getting Started)
 ```
 
@@ -198,6 +200,53 @@ If successful, you'll see JSON with your account info:
 ```
 
 If you get an error, double-check your Access Key and Secret Key for typos.
+
+### Configure Your Student Name
+
+Since everyone shares the same AWS account, each student's resources are prefixed with their name to keep them separate. **You must configure this before deploying.**
+
+#### Step 1: Edit cdk.json
+
+Open `cdk.json` and find the `studentName` field:
+
+```json
+"context": {
+  "studentName": "CHANGE-ME",
+  ...
+}
+```
+
+Change `"CHANGE-ME"` to your IAM username (the username your instructor gave you for AWS access):
+
+```json
+"context": {
+  "studentName": "jsmith",
+  ...
+}
+```
+
+#### Step 2: Verify Your Name Matches
+
+**Important:** Your `studentName` must exactly match your IAM username. This is enforced by AWS permissions - if they don't match, your deployments will fail with "Access Denied" errors.
+
+To check your IAM username, run:
+
+```bash
+aws sts get-caller-identity
+```
+
+The `Arn` field shows your username at the end: `arn:aws:iam::123456789012:user/jsmith` → username is `jsmith`
+
+#### What This Does
+
+When you deploy, all your AWS resources will be prefixed with your name:
+- Stack: `jsmith-UwrfStack`
+- Lambda function: `jsmith-video-handler`
+- S3 bucket (when you add it): `jsmith-video-bucket`
+
+This keeps your resources separate from other students and ensures you can only modify your own infrastructure.
+
+---
 
 #### Where Are Credentials Stored?
 
@@ -394,6 +443,10 @@ This removes everything CDK created, so you won't get charged for resources you'
 
 ## Troubleshooting
 
+### "Please set your studentName in cdk.json"
+
+You haven't configured your student name yet. Edit `cdk.json` and change `"studentName": "CHANGE-ME"` to your IAM username. See [Configure Your Student Name](#configure-your-student-name).
+
 ### "Unable to locate credentials"
 
 Your AWS credentials aren't configured. Run `aws configure` and enter your keys.
@@ -408,7 +461,7 @@ Run `cdk bootstrap` before your first deploy.
 
 ### "Access Denied" errors
 
-Your IAM user might not have permission for certain actions. Check with your instructor.
+This usually means your `studentName` in `cdk.json` doesn't match your IAM username. Run `aws sts get-caller-identity` to verify your username and update `cdk.json` to match exactly. If the names match and you still get errors, check with your instructor.
 
 ### Lambda times out
 
