@@ -52,3 +52,9 @@ cdk.context.json
 
 ### Claude ###
 CLAUDE.md
+
+### Large Media Files ###
+*.mp4
+*.mov
+*.avi
+*.mkv
