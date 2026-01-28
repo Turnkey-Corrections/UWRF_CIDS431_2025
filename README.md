@@ -67,15 +67,30 @@ You're creating an automated **Lecture Video Quiz Generator**. Here's the cool p
 
 ```
 UWRFCCSample/
-├── src/main/java/org/uwrf/
-│   ├── CdkApp.java           # Entry point - tells CDK which stacks to deploy
-│   ├── CdkStack.java         # Defines your infrastructure (S3 bucket, Lambda, permissions)
-│   └── handlers/
-│       └── VideoHandler.java # Your Lambda function code (the actual pipeline logic)
+├── src/
+│   ├── main/java/org/uwrf/
+│   │   ├── CdkApp.java           # Entry point - tells CDK which stacks to deploy
+│   │   ├── UwrfStack.java        # Infrastructure definition (Lambda is set up, you add S3)
+│   │   └── handlers/
+│   │       └── VideoHandler.java # Lambda function - starter code provided, you complete it
+│   └── test/java/org/uwrf/handlers/
+│       └── VideoHandlerTest.java      # Tests for local development
 ├── pom.xml                   # Maven dependencies (like package.json for Java)
 ├── cdk.json                  # CDK configuration
 └── SampleVideo.mp4           # Test video (download separately - see Getting Started)
 ```
+
+### What's Provided vs. What You Build
+
+We've given you starter code to get you going. Here's what's done and what's left for you:
+
+| Component | Status | Your Task |
+|-----------|--------|-----------|
+| **Lambda Handler** | Starter code provided | Complete the TODO steps: call Transcribe, call Bedrock, write JSON to S3 |
+| **CDK Stack (Lambda)** | Done | Lambda function is configured and ready to deploy |
+| **CDK Stack (S3)** | TODO comments provided | Create the S3 bucket and connect it to Lambda |
+| **CDK Stack (Permissions)** | TODO comments provided | Grant Lambda permission to use Transcribe, Bedrock, and S3 |
+| **Local Testing** | Done | Test class and sample event provided |
 
 ### Example Quiz Output
 
@@ -215,7 +230,88 @@ export AWS_PROFILE=your-profile-name
 
 ---
 
+## Development Workflow
+
+**Important**: Don't deploy to AWS every time you make a change! That's slow and uses real cloud resources. Instead, test locally first, then deploy when you're confident your code works.
+
+### The Recommended Workflow
+
+```
+1. Write code  →  2. Run tests locally  →  3. Fix issues  →  4. Repeat until tests pass  →  5. Deploy to AWS
+```
+
+### Testing Locally (Fast Feedback Loop)
+
+We've set up a test class that lets you run your Lambda code on your own machine without deploying to AWS. This is way faster for debugging.
+
+**Run all tests:**
+
+```bash
+mvn test
+```
+
+**Run just the VideoHandler tests:**
+
+```bash
+mvn test -Dtest=VideoHandlerTest
+```
+
+**What happens when you run tests:**
+
+1. The test creates a fake S3 event programmatically (simulating what AWS sends)
+2. It calls your `VideoHandler.handleRequest()` method with that fake event
+3. Your code runs locally and prints output to the console
+4. You see if it worked or if there were errors
+
+**Example output when tests pass:**
+
+```
+=== Lambda Function Triggered ===
+Received S3 event with 1 record(s)
+--- S3 Event Details ---
+Event Type: ObjectCreated:Put
+Bucket: my-video-bucket
+File: lectures/SampleVideo.mp4
+Size: 844365824 bytes
+------------------------
+```
+
+### Customizing the Test Event
+
+To test different scenarios, edit the test in `VideoHandlerTest.java` or add new tests:
+
+```java
+@Test
+void handleRequest_withMyCustomScenario() {
+    // Change these values to simulate different uploads
+    S3Event s3Event = createTestS3Event(
+        "your-bucket-name",           // bucket name
+        "path/to/your-video.mp4",     // file path in S3
+        12345678L                      // file size in bytes
+    );
+
+    Context mockContext = new MockLambdaContext();
+    String result = handler.handleRequest(s3Event, mockContext);
+
+    // Add your assertions here
+    assertNotNull(result);
+}
+```
+
+### Why Local Testing Matters
+
+| Approach | Time to See Results | Cost |
+|----------|---------------------|------|
+| Local testing (`mvn test`) | ~5 seconds | Free |
+| Deploy to AWS (`cdk deploy`) | ~2-5 minutes | Uses AWS resources |
+
+Local testing is 20-60x faster. Use it!
+
+---
+
 ## Building and Deploying
+
+Once your tests pass locally, you're ready to deploy to AWS.
 
 ### Compile Your Code
 
@@ -226,6 +322,18 @@ mvn compile
 ```
 
 If you see `BUILD SUCCESS`, you're good to go.
+
+### Build the Lambda JAR
+
+Before deploying, you need to package your Lambda code into a JAR file:
+
+```bash
+mvn package
+```
+
+This creates `target/lambda.jar` - a "fat JAR" containing your code and all its dependencies. CDK uploads this file to AWS when you deploy.
+
+**Note**: If you skip this step, `cdk deploy` will fail because it can't find the JAR file.
 
 ### First-Time Setup: Bootstrap CDK
 
@@ -255,15 +363,22 @@ This shows what will change compared to what's currently deployed.
 
 ### Deploy to AWS
 
-When you're ready to create real resources:
+When you're ready to create real resources, run these commands in order:
 
 ```bash
-cdk deploy
+mvn package      # Build the Lambda JAR
+cdk deploy       # Deploy to AWS
 ```
 
 CDK will show you what it's about to create and ask for confirmation. Type `y` to proceed.
 
 After deployment, you'll see outputs with your S3 bucket name and other useful info.
+
+**Pro tip**: You can chain these commands so they run together:
+
+```bash
+mvn package && cdk deploy
+```
 
 ### Tear Down (Clean Up)
 
@@ -313,9 +428,11 @@ Make sure you saved your files and ran `mvn compile` before `cdk deploy`.
 | Check Maven version | `mvn -version` |
 | Check CDK version | `cdk --version` |
 | Compile code | `mvn compile` |
-| Run tests | `mvn test` |
+| Run tests locally | `mvn test` |
+| Run specific test | `mvn test -Dtest=VideoHandlerTest` |
+| Build Lambda JAR | `mvn package` |
 | Preview deployment | `cdk diff` |
-| Deploy to AWS | `cdk deploy` |
+| Deploy to AWS | `mvn package && cdk deploy` |
 | Delete resources | `cdk destroy` |
 | Test AWS credentials | `aws sts get-caller-identity` |
 
