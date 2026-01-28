@@ -49,3 +49,6 @@ Desktop.ini
 ### AWS CDK ###
 cdk.out/
 cdk.context.json
+
+### Claude ###
+CLAUDE.md
