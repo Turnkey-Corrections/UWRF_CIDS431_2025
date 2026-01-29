@@ -168,6 +168,25 @@
       "Resource": "arn:aws:iam::*:user/${aws:username}"
     },
     {
+      "Sid": "IAMListUsers",
+      "Effect": "Allow",
+      "Action": "iam:ListUsers",
+      "Resource": "*"
+    },
+    {
+      "Sid": "ConsoleViewResources",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:ListFunctions",
+        "s3:ListAllMyBuckets",
+        "logs:DescribeLogGroups",
+        "iam:ListRoles",
+        "transcribe:ListTranscriptionJobs",
+        "cloudformation:ListStacks"
+      ],
+      "Resource": "*"
+    },
+    {
       "Sid": "CloudWatchLogsAccess",
       "Effect": "Allow",
       "Action": [
