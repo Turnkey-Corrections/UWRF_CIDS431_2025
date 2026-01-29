@@ -156,11 +156,20 @@ Save the file in the root of your project folder (next to `pom.xml`). The file i
 
 Your code needs permission to create resources in AWS. Here's how to set that up:
 
-#### Step 1: Get Your Credentials
+#### Step 1: Create Your AWS Account and Access Keys
 
-Your instructor will provide you with:
-- **Access Key ID** (looks like `AKIAIOSFODNN7EXAMPLE`)
-- **Secret Access Key** (looks like random numbers and letters)
+Each student needs their own AWS account:
+
+1. **Sign up for AWS** at [aws.amazon.com](https://aws.amazon.com/) using your own email and payment information
+2. **Monitor your usage** to stay within the [AWS Free Tier](https://aws.amazon.com/free/) and avoid unexpected charges
+3. **Create an Access Key** in the AWS Console:
+   - Go to **IAM** → **Users** → Select your user (or create one)
+   - Click **Security credentials** tab
+   - Under **Access keys**, click **Create access key**
+   - Choose **Command Line Interface (CLI)** as your use case
+   - Download or copy both values:
+     - **Access Key ID** (looks like `AKIAIOSFODNN7EXAMPLE`)
+     - **Secret Access Key** (looks like random numbers and letters)
 
 Keep these private! They're like a username and password for AWS.
 
@@ -203,7 +212,7 @@ If you get an error, double-check your Access Key and Secret Key for typos.
 
 ### Configure Your Student Name
 
-Since everyone shares the same AWS account, each student's resources are prefixed with their name to keep them separate. **You must configure this before deploying.**
+Your resources are prefixed with your name to make them easily identifiable. **You must configure this before deploying.**
 
 #### Step 1: Edit cdk.json
 
@@ -216,7 +225,7 @@ Open `cdk.json` and find the `studentName` field:
 }
 ```
 
-Change `"CHANGE-ME"` to your IAM username (the username your instructor gave you for AWS access):
+Change `"CHANGE-ME"` to your name or a unique identifier (e.g., your last name or username):
 
 ```json
 "context": {
@@ -225,18 +234,6 @@ Change `"CHANGE-ME"` to your IAM username (the username your instructor gave you
 }
 ```
 
-#### Step 2: Verify Your Name Matches
-
-**Important:** Your `studentName` must exactly match your IAM username. This is enforced by AWS permissions - if they don't match, your deployments will fail with "Access Denied" errors.
-
-To check your IAM username, run:
-
-```bash
-aws sts get-caller-identity
-```
-
-The `Arn` field shows your username at the end: `arn:aws:iam::123456789012:user/jsmith` → username is `jsmith`
-
 #### What This Does
 
 When you deploy, all your AWS resources will be prefixed with your name:
@@ -244,7 +241,7 @@ When you deploy, all your AWS resources will be prefixed with your name:
 - Lambda function: `jsmith-video-handler`
 - S3 bucket (when you add it): `jsmith-video-bucket`
 
-This keeps your resources separate from other students and ensures you can only modify your own infrastructure.
+This makes it easy to identify your resources in the AWS Console.
 
 ---
 
@@ -461,7 +458,7 @@ Run `cdk bootstrap` before your first deploy.
 
 ### "Access Denied" errors
 
-This usually means your `studentName` in `cdk.json` doesn't match your IAM username. Run `aws sts get-caller-identity` to verify your username and update `cdk.json` to match exactly. If the names match and you still get errors, check with your instructor.
+This usually means your AWS credentials don't have the required permissions. Make sure your IAM user has permissions for Lambda, S3, Transcribe, Bedrock, and CloudFormation. If you're unsure, check with your instructor about the required IAM policies.
 
 ### Lambda times out
 
