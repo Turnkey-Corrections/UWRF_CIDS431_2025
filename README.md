@@ -488,6 +488,58 @@ Make sure you saved your files and ran `mvn compile` before `cdk deploy`.
 
 ---
 
+## Submission Instructions
+
+When you have completed the project, submit your work via a pull request:
+
+### Step 1: Fork the Repository
+
+1. Go to the original repository on GitHub
+2. Click the **Fork** button in the top-right corner
+3. This creates your own copy of the repository under your GitHub account
+
+### Step 2: Clone Your Fork
+
+Clone your forked repository to your local machine:
+
+```bash
+git clone https://github.com/YOUR-USERNAME/UWRFCCSample.git
+```
+
+Replace `YOUR-USERNAME` with your GitHub username.
+
+### Step 3: Complete the Project
+
+Work on the project in your forked repository. Make sure to:
+- Configure your `studentName` in `cdk.json`
+- Complete all TODO items in the code
+- Test your implementation locally with `mvn test`
+- Successfully deploy to AWS with `cdk deploy`
+
+### Step 4: Push Your Changes
+
+Commit and push your completed work to your fork:
+
+```bash
+git add .
+git commit -m "Complete video quiz generator project"
+git push origin master
+```
+
+### Step 5: Create a Pull Request
+
+1. Go to your forked repository on GitHub
+2. Click **Contribute** → **Open pull request**
+3. Add a title describing your submission (e.g., "John Smith - Final Project Submission")
+4. In the description, briefly note:
+   - Any challenges you encountered
+   - Any features you added beyond the requirements
+5. Click **Create pull request**
+
+Your instructor will review your submission via the pull request.
+
+---
+
 ## Need Help?
 
 1. **Check the troubleshooting section above**
