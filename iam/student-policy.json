@@ -113,6 +113,17 @@
       }
     },
     {
+      "Sid": "IAMPassRoleToCloudFormation",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::*:role/cdk-*",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "cloudformation.amazonaws.com"
+        }
+      }
+    },
+    {
       "Sid": "CDKBootstrapAccess",
       "Effect": "Allow",
       "Action": [
@@ -121,6 +132,27 @@
       "Resource": "arn:aws:ssm:*:*:parameter/cdk-bootstrap/*"
     },
     {
+      "Sid": "CDKToolkitStackAccess",
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:CreateStack",
+        "cloudformation:UpdateStack",
+        "cloudformation:DeleteStack",
+        "cloudformation:CreateChangeSet",
+        "cloudformation:DescribeChangeSet",
+        "cloudformation:DescribeEvents",
+        "cloudformation:ExecuteChangeSet",
+        "cloudformation:DeleteChangeSet",
+        "cloudformation:DescribeStacks",
+        "cloudformation:DescribeStackEvents",
+        "cloudformation:DescribeStackResources",
+        "cloudformation:GetTemplate",
+        "cloudformation:GetTemplateSummary",
+        "cloudformation:ListStackResources"
+      ],
+      "Resource": "*"
+    },
+        {
       "Sid": "CDKStagingBucketAccess",
       "Effect": "Allow",
       "Action": [
@@ -151,6 +183,15 @@
       "Action": [
         "bedrock:InvokeModel",
         "bedrock:InvokeModelWithResponseStream"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "MarketplaceSubscriptionAccess",
+      "Effect": "Allow",
+      "Action": [
+        "aws-marketplace:ViewSubscriptions",
+        "aws-marketplace:Subscribe"
       ],
       "Resource": "*"
     },

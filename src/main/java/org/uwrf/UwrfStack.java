@@ -3,10 +3,13 @@ package org.uwrf;
 import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
+import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
 import software.constructs.Construct;
+
+import java.util.List;
 
 public class UwrfStack extends Stack {
     private final String studentName;
@@ -45,5 +48,21 @@ public class UwrfStack extends Stack {
         // - Call AWS Transcribe
         // - Call AWS Bedrock
         // - Write quiz results back to S3
+
+        videoHandler.addToRolePolicy(PolicyStatement.Builder.create()
+                .actions(List.of(
+                        "bedrock:InvokeModel",
+                        "bedrock:InvokeModelWithResponseStream"
+                ))
+                .resources(List.of("*"))
+                .build());
+
+        videoHandler.addToRolePolicy(PolicyStatement.Builder.create()
+                .actions(List.of(
+                        "aws-marketplace:ViewSubscriptions",
+                        "aws-marketplace:Subscribe"
+                ))
+                .resources(List.of("*"))
+                .build());
     }
 }
