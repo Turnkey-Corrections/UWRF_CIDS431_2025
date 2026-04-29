@@ -1,4 +1,4 @@
-# UWRF CIDS 431 - AWS CDK Final Project
+# UWRF CIDS 431 - AWS CDK Finnal Project
 
 Welcome! In this project, you'll build a cloud-based system that automatically generates quizzes from lecture videos. By the end, you'll have hands-on experience with AWS services that are used in real-world software engineering jobs.
 
