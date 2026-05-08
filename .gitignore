@@ -58,3 +58,6 @@ CLAUDE.md
 *.mov
 *.avi
 *.mkv
+
+### Nvim Temp Files ###
+*.*~
