@@ -95,6 +95,17 @@
                 <configuration>
                     <createDependencyReducedPom>false</createDependencyReducedPom>
                     <finalName>lambda</finalName>
+                    <artifactSet>
+                        <excludes>
+                            <exclude>software.amazon.awscdk:aws-cdk-lib</exclude>
+                            <exclude>software.constructs:constructs</exclude>
+                            <exclude>software.amazon.awscdk:cdk-asset-awscli-v1</exclude>
+                            <exclude>software.amazon.awscdk:cdk-asset-kubectl-v20</exclude>
+                            <exclude>software.amazon.awscdk:cdk-asset-node-proxy-agent-v6</exclude>
+                            <exclude>software.amazon.awscdk:cdk-cloud-assembly-schema</exclude>
+                            <exclude>software.amazon.jsii:jsii-runtime</exclude>
+                        </excludes>
+                    </artifactSet>
                 </configuration>
                 <executions>
                     <execution>
