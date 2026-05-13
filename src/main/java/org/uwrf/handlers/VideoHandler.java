@@ -8,6 +8,17 @@ import org.uwrf.services.BedrockQuizGenerator;
 import org.uwrf.services.MockQuizGenerator;
 import org.uwrf.services.QuizGenerator;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import java.time.Instant;
+
+
 /**
  * Lambda function that handles S3 events when a video file is uploaded.
  *
@@ -24,6 +35,9 @@ import org.uwrf.services.QuizGenerator;
 public class VideoHandler implements RequestHandler<S3Event, String> {
 
     private final QuizGenerator quizGenerator;
+
+    private static final String TRANSCRIPT_KEY = "transcripts/sample-transcript.json";    		
+    private final ObjectMapper mapper = new ObjectMapper();
 
     /**
      * Default constructor used by AWS Lambda.
@@ -61,31 +75,61 @@ public class VideoHandler implements RequestHandler<S3Event, String> {
             System.out.println("Event Time: " + record.getEventTime());
             System.out.println("------------------------");
 
-            // TODO: Step 1 - Call AWS Transcribe
-            // Use the bucketName and objectKey to start a transcription job
-            // Hint: TranscribeClient transcribeClient = TranscribeClient.create();
-            // Start a job with transcribeClient.startTranscriptionJob(...)
-            // Output the transcript JSON to S3 using outputBucketName and outputKey
+            if (objectKey.equals(TRANSCRIPT_KEY)) {
+                System.out.println("Ignoring transcript file upload event.");
+                continue;
+            }
 
-            // TODO: Step 2 - Wait for transcription to complete and get the text
-            // Transcription is async -- poll getTranscriptionJob() until status is COMPLETED
-            // Then read the transcript JSON from S3 and extract the text:
-            //   transcriptNode.get("results").get("transcripts").get(0).get("transcript").asText()
+            try (S3Client s3Client = S3Client.create()) {
+                // Step 1: Read the pre-supplied transcript JSON from S3.
+                System.out.println("Reading pre-supplied transcript: " + TRANSCRIPT_KEY);
+                ResponseBytes<GetObjectResponse> transcriptBytes = s3Client.getObjectAsBytes(
+                        GetObjectRequest.builder()
+                                .bucket(bucketName)
+                                .key(TRANSCRIPT_KEY)
+                                .build());
 
-            // TODO: Step 3 - Call Bedrock with the transcript
-            // Replace "transcript" below with the actual transcript string from Step 2:
-            //
-            //   String quizJson = this.quizGenerator.generateQuiz(transcript);
-            //
-            // While MOCK_BEDROCK=true this returns canned questions at zero cost.
-            // Flip MOCK_BEDROCK=false when you're ready to test real AI generation.
+                JsonNode transcriptNode = mapper.readTree(transcriptBytes.asByteArray());
+                String transcript = transcriptNode
+                        .get("results")
+                        .get("transcripts")
+                        .get(0)
+                        .get("transcript")
+                        .asText();
+                System.out.println("Transcript length: " + transcript.length() + " characters");
 
-            // TODO: Step 4 - Build the quiz object
-            // Wrap the quiz JSON array in an object that includes metadata:
-            //   { "sourceVideo": objectKey, "generatedAt": "...", "questions": [...] }
+                // Step 2: Send the transcript to the QuizGenerator.
+                String quizJson = this.quizGenerator.generateQuiz(transcript);
 
-            // TODO: Step 5 - Write the quiz JSON back to S3
-            // Use S3Client to put a JSON file at "quizzes/<videoName>-quiz.json"
+                // Step 3: Wrap the quiz with metadata.
+                String wrappedQuiz = "{"
+                        + "\"sourceVideo\":\"" + objectKey + "\","
+                        + "\"transcriptSource\":\"" + TRANSCRIPT_KEY + "\","
+                        + "\"generatedAt\":\"" + Instant.now() + "\","
+                        + "\"questions\":" + quizJson
+                        + "}";
+
+                // Step 4: Write the quiz JSON back to S3.
+                String videoBaseName = objectKey.contains(".")
+                        ? objectKey.substring(0, objectKey.lastIndexOf('.'))
+                        : objectKey;
+                String quizKey = "quizzes/" + videoBaseName + "-quiz.json";
+
+                s3Client.putObject(PutObjectRequest.builder()
+                                .bucket(bucketName)
+                                .key(quizKey)
+                                .contentType("application/json")
+                                .build(),
+                        RequestBody.fromString(wrappedQuiz));
+
+                System.out.println("Quiz written to s3://" + bucketName + "/" + quizKey);
+
+            } catch (Exception e) {
+                System.err.println("Error processing " + objectKey + ": " + e.getMessage());
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+
         }
 
         return "Processed " + s3Event.getRecords().size() + " record(s)";
