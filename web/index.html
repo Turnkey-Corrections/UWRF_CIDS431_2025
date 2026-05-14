@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Lecture Quiz Generator</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <h1>Lecture Quiz Generator</h1>
+            <p>Upload a transcript, let S3 trigger Lambda, then review the generated quiz here.</p>
+          </div>
+          <button id="downloadButton" class="secondary" type="button" disabled>Download JSON</button>
+        </header>
+
+        <section class="control-panel">
+          <label class="field span-2">
+            <span>Lambda API URL</span>
+            <input id="apiUrl" type="url" placeholder="https://example.execute-api.us-east-1.amazonaws.com/prod/quiz">
+          </label>
+
+          <div class="upload-box">
+            <input id="fileInput" type="file" accept=".txt,text/plain" hidden>
+            <button id="chooseFileButton" type="button">Choose TXT File</button>
+            <div>
+              <strong id="fileName">No file selected</strong>
+              <span id="fileMeta">TXT transcripts only</span>
+            </div>
+          </div>
+
+          <button id="generateButton" class="primary" type="button" disabled>Upload Transcript</button>
+        </section>
+
+        <section class="status-card" aria-live="polite">
+          <div class="status-copy">
+            <strong id="statusTitle">Ready</strong>
+            <span id="statusText">Choose the transcript file from your Desktop or project folder.</span>
+          </div>
+          <div class="pipeline">
+            <span id="stepFile" class="step active">File</span>
+            <span id="stepUpload" class="step">S3</span>
+            <span id="stepLambda" class="step">Lambda</span>
+            <span id="stepQuiz" class="step">Quiz</span>
+          </div>
+        </section>
+
+        <section class="content-grid">
+          <article class="panel">
+            <header>
+              <h2>Transcript Preview</h2>
+              <span id="transcriptCount">0 chars</span>
+            </header>
+            <textarea id="transcriptPreview" spellcheck="false" placeholder="Your uploaded transcript text will appear here."></textarea>
+          </article>
+
+          <article class="panel">
+            <header>
+              <h2>Generated Quiz</h2>
+              <span id="questionCount">0 questions</span>
+            </header>
+            <div id="quizOutput" class="quiz-output empty">Generated questions will appear here after Lambda writes the quiz JSON to S3.</div>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

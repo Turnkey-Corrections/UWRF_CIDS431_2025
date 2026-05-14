@@ -95,6 +95,13 @@
                 <configuration>
                     <createDependencyReducedPom>false</createDependencyReducedPom>
                     <finalName>lambda</finalName>
+                    <artifactSet>
+                        <excludes>
+                            <exclude>software.amazon.awscdk:*</exclude>
+                            <exclude>software.constructs:constructs</exclude>
+                            <exclude>software.amazon.jsii:jsii-runtime</exclude>
+                        </excludes>
+                    </artifactSet>
                 </configuration>
                 <executions>
                     <execution>

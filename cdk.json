@@ -1,5 +1,5 @@
 {
-  "app": "mvn -e -q compile exec:java",
+  "app": "mvn -Dmaven.repo.local=.m2/repository -e -q compile exec:java",
   "watch": {
     "include": ["**"],
     "exclude": [
@@ -11,7 +11,7 @@
     ]
   },
   "context": {
-    "studentName": "CHANGE-ME",
+    "studentName": "Aaron-Klein",
     "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
     "@aws-cdk/core:checkSecretUsage": true,
     "@aws-cdk/core:target-partitions": ["aws", "aws-cn"]

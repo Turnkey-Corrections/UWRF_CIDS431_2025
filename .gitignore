@@ -45,6 +45,8 @@ Desktop.ini
 ### Environment ###
 .env
 .env.local
+.venv-whisper/
+.m2/
 
 ### AWS CDK ###
 cdk.out/
@@ -58,3 +60,7 @@ CLAUDE.md
 *.mov
 *.avi
 *.mkv
+
+### Generated Presentation Files ###
+*.pptx
+presentation_build/

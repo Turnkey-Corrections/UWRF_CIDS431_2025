@@ -4,9 +4,29 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.S3Event;
 import com.amazonaws.services.lambda.runtime.events.models.s3.S3EventNotification;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.uwrf.services.BedrockQuizGenerator;
 import org.uwrf.services.MockQuizGenerator;
 import org.uwrf.services.QuizGenerator;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.core.sync.ResponseTransformer;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.transcribe.TranscribeClient;
+import software.amazon.awssdk.services.transcribe.model.GetTranscriptionJobRequest;
+import software.amazon.awssdk.services.transcribe.model.GetTranscriptionJobResponse;
+import software.amazon.awssdk.services.transcribe.model.Media;
+import software.amazon.awssdk.services.transcribe.model.MediaFormat;
+import software.amazon.awssdk.services.transcribe.model.StartTranscriptionJobRequest;
+import software.amazon.awssdk.services.transcribe.model.TranscriptionJobStatus;
+
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Locale;
 
 /**
  * Lambda function that handles S3 events when a video file is uploaded.
@@ -23,7 +43,13 @@ import org.uwrf.services.QuizGenerator;
  */
 public class VideoHandler implements RequestHandler<S3Event, String> {
 
+    private static final int POLL_INTERVAL_MILLIS = 10_000;
+
     private final QuizGenerator quizGenerator;
+    private final S3Client s3Client;
+    private final TranscribeClient transcribeClient;
+    private final ObjectMapper objectMapper;
+    private final boolean localTestMode;
 
     /**
      * Default constructor used by AWS Lambda.
@@ -32,14 +58,25 @@ public class VideoHandler implements RequestHandler<S3Event, String> {
     public VideoHandler() {
         this("true".equalsIgnoreCase(System.getenv("MOCK_BEDROCK"))
                 ? new MockQuizGenerator()
-                : new BedrockQuizGenerator());
+                : new BedrockQuizGenerator(),
+                S3Client.create(),
+                TranscribeClient.create(),
+                false);
     }
 
     /**
      * Constructor for unit tests -- inject any QuizGenerator implementation directly.
      */
     VideoHandler(QuizGenerator quizGenerator) {
+        this(quizGenerator, null, null, true);
+    }
+
+    VideoHandler(QuizGenerator quizGenerator, S3Client s3Client, TranscribeClient transcribeClient, boolean localTestMode) {
         this.quizGenerator = quizGenerator;
+        this.s3Client = s3Client;
+        this.transcribeClient = transcribeClient;
+        this.objectMapper = new ObjectMapper();
+        this.localTestMode = localTestMode;
     }
 
     @Override
@@ -61,33 +98,175 @@ public class VideoHandler implements RequestHandler<S3Event, String> {
             System.out.println("Event Time: " + record.getEventTime());
             System.out.println("------------------------");
 
-            // TODO: Step 1 - Call AWS Transcribe
-            // Use the bucketName and objectKey to start a transcription job
-            // Hint: TranscribeClient transcribeClient = TranscribeClient.create();
-            // Start a job with transcribeClient.startTranscriptionJob(...)
-            // Output the transcript JSON to S3 using outputBucketName and outputKey
+            try {
+                String decodedObjectKey = URLDecoder.decode(objectKey, StandardCharsets.UTF_8);
+                String transcript;
 
-            // TODO: Step 2 - Wait for transcription to complete and get the text
-            // Transcription is async -- poll getTranscriptionJob() until status is COMPLETED
-            // Then read the transcript JSON from S3 and extract the text:
-            //   transcriptNode.get("results").get("transcripts").get(0).get("transcript").asText()
+                if (localTestMode) {
+                    transcript = "Local test transcript for " + decodedObjectKey;
+                } else if (isTranscriptObject(decodedObjectKey)) {
+                    transcript = readTranscriptObject(bucketName, decodedObjectKey);
+                } else {
+                    String transcriptionJobName = buildJobName(decodedObjectKey);
+                    String transcriptOutputKey = "transcripts/" + transcriptionJobName + ".json";
 
-            // TODO: Step 3 - Call Bedrock with the transcript
-            // Replace "transcript" below with the actual transcript string from Step 2:
-            //
-            //   String quizJson = this.quizGenerator.generateQuiz(transcript);
-            //
-            // While MOCK_BEDROCK=true this returns canned questions at zero cost.
-            // Flip MOCK_BEDROCK=false when you're ready to test real AI generation.
+                    startTranscriptionJob(bucketName, decodedObjectKey, transcriptionJobName, transcriptOutputKey);
+                    waitForTranscriptionJob(transcriptionJobName, context);
+                    transcript = readTranscript(bucketName, transcriptOutputKey);
+                }
 
-            // TODO: Step 4 - Build the quiz object
-            // Wrap the quiz JSON array in an object that includes metadata:
-            //   { "sourceVideo": objectKey, "generatedAt": "...", "questions": [...] }
+                String quizJson = this.quizGenerator.generateQuiz(transcript);
+                String finalQuizJson = buildQuizObject(decodedObjectKey, quizJson);
+                String quizOutputKey = buildQuizOutputKey(decodedObjectKey);
 
-            // TODO: Step 5 - Write the quiz JSON back to S3
-            // Use S3Client to put a JSON file at "quizzes/<videoName>-quiz.json"
+                if (localTestMode) {
+                    System.out.println("[LOCAL TEST] Would write quiz JSON to s3://" + bucketName + "/" + quizOutputKey);
+                } else {
+                    writeQuiz(bucketName, quizOutputKey, finalQuizJson);
+                    System.out.println("Wrote quiz JSON to s3://" + bucketName + "/" + quizOutputKey);
+                }
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to process S3 object " + bucketName + "/" + objectKey, e);
+            }
         }
 
         return "Processed " + s3Event.getRecords().size() + " record(s)";
+    }
+
+    private boolean isTranscriptObject(String objectKey) {
+        String lowerKey = objectKey.toLowerCase(Locale.ROOT);
+        return lowerKey.startsWith("transcripts/") && (lowerKey.endsWith(".txt") || lowerKey.endsWith(".json"));
+    }
+
+    private void startTranscriptionJob(String bucketName, String objectKey, String jobName, String outputKey) {
+        String mediaUri = "s3://" + bucketName + "/" + objectKey;
+        System.out.println("Starting Transcribe job: " + jobName);
+
+        transcribeClient.startTranscriptionJob(StartTranscriptionJobRequest.builder()
+                .transcriptionJobName(jobName)
+                .languageCode("en-US")
+                .mediaFormat(detectMediaFormat(objectKey))
+                .media(Media.builder().mediaFileUri(mediaUri).build())
+                .outputBucketName(bucketName)
+                .outputKey(outputKey)
+                .build());
+    }
+
+    private void waitForTranscriptionJob(String jobName, Context context) throws InterruptedException {
+        while (true) {
+            GetTranscriptionJobResponse response = transcribeClient.getTranscriptionJob(GetTranscriptionJobRequest.builder()
+                    .transcriptionJobName(jobName)
+                    .build());
+
+            TranscriptionJobStatus status = response.transcriptionJob().transcriptionJobStatus();
+            System.out.println("Transcribe job " + jobName + " status: " + status);
+
+            if (status == TranscriptionJobStatus.COMPLETED) {
+                return;
+            }
+            if (status == TranscriptionJobStatus.FAILED) {
+                throw new IllegalStateException("Transcribe job failed: " + response.transcriptionJob().failureReason());
+            }
+            if (context != null && context.getRemainingTimeInMillis() < POLL_INTERVAL_MILLIS + 5_000) {
+                throw new IllegalStateException("Lambda is about to time out before Transcribe completed");
+            }
+
+            Thread.sleep(POLL_INTERVAL_MILLIS);
+        }
+    }
+
+    private String readTranscript(String bucketName, String transcriptOutputKey) throws Exception {
+        System.out.println("Reading transcript from s3://" + bucketName + "/" + transcriptOutputKey);
+
+        String transcriptJson = s3Client.getObject(GetObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(transcriptOutputKey)
+                        .build(),
+                ResponseTransformer.toBytes()).asUtf8String();
+
+        JsonNode transcriptNode = objectMapper.readTree(transcriptJson);
+        return transcriptNode.get("results").get("transcripts").get(0).get("transcript").asText();
+    }
+
+    private String readTranscriptObject(String bucketName, String transcriptObjectKey) throws Exception {
+        System.out.println("Reading uploaded transcript from s3://" + bucketName + "/" + transcriptObjectKey);
+
+        String transcriptObject = s3Client.getObject(GetObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(transcriptObjectKey)
+                        .build(),
+                ResponseTransformer.toBytes()).asUtf8String();
+
+        if (transcriptObjectKey.toLowerCase(Locale.ROOT).endsWith(".json")) {
+            JsonNode transcriptNode = objectMapper.readTree(transcriptObject);
+            JsonNode transcript = transcriptNode.path("results").path("transcripts").path(0).path("transcript");
+            if (transcript.isMissingNode() || transcript.asText().isBlank()) {
+                throw new IllegalArgumentException("Transcript JSON does not contain results.transcripts[0].transcript");
+            }
+            return transcript.asText();
+        }
+
+        return transcriptObject;
+    }
+
+    private String buildQuizObject(String sourceVideo, String quizJson) throws Exception {
+        ObjectNode quizObject = objectMapper.createObjectNode();
+        quizObject.put("sourceVideo", sourceVideo);
+        quizObject.put("generatedAt", Instant.now().toString());
+        quizObject.set("questions", objectMapper.readTree(quizJson));
+        return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(quizObject);
+    }
+
+    private void writeQuiz(String bucketName, String quizOutputKey, String quizJson) {
+        s3Client.putObject(PutObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(quizOutputKey)
+                        .contentType("application/json")
+                        .build(),
+                RequestBody.fromString(quizJson, StandardCharsets.UTF_8));
+    }
+
+    private String buildJobName(String objectKey) {
+        String baseName = fileNameWithoutExtension(objectKey);
+        String safeName = baseName.replaceAll("[^A-Za-z0-9._-]", "-");
+        String timestamp = String.valueOf(Instant.now().toEpochMilli());
+        return trimToMaxLength(safeName + "-" + timestamp, 200);
+    }
+
+    private String buildQuizOutputKey(String objectKey) {
+        return "quizzes/" + fileNameWithoutExtension(objectKey) + "-quiz.json";
+    }
+
+    private String fileNameWithoutExtension(String objectKey) {
+        String fileName = objectKey.substring(objectKey.lastIndexOf('/') + 1);
+        int lastDot = fileName.lastIndexOf('.');
+        return lastDot > 0 ? fileName.substring(0, lastDot) : fileName;
+    }
+
+    private String trimToMaxLength(String value, int maxLength) {
+        return value.length() <= maxLength ? value : value.substring(value.length() - maxLength);
+    }
+
+    private MediaFormat detectMediaFormat(String objectKey) {
+        String lowerKey = objectKey.toLowerCase(Locale.ROOT);
+        if (lowerKey.endsWith(".mp3")) {
+            return MediaFormat.MP3;
+        }
+        if (lowerKey.endsWith(".wav")) {
+            return MediaFormat.WAV;
+        }
+        if (lowerKey.endsWith(".flac")) {
+            return MediaFormat.FLAC;
+        }
+        if (lowerKey.endsWith(".ogg")) {
+            return MediaFormat.OGG;
+        }
+        if (lowerKey.endsWith(".amr")) {
+            return MediaFormat.AMR;
+        }
+        if (lowerKey.endsWith(".webm")) {
+            return MediaFormat.WEBM;
+        }
+        return MediaFormat.MP4;
     }
 }
