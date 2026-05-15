@@ -33,7 +33,7 @@
             <version>${constructs.version}</version>
         </dependency>
 
-        <!-- AWS Lambda -->
+        <!-- AWS Lambda runtime -->
         <dependency>
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-lambda-java-core</artifactId>
@@ -52,6 +52,7 @@
             <version>${jackson.version}</version>
         </dependency>
 
+        <!-- AWS SDK v2 - only the three services actually used -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
@@ -68,7 +69,7 @@
             <version>${aws.sdk.version}</version>
         </dependency>
 
-        <!-- Testing -->
+        <!-- Testing only -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
@@ -87,6 +88,7 @@
                     <mainClass>org.uwrf.CdkApp</mainClass>
                 </configuration>
             </plugin>
+
             <!-- Build fat JAR for Lambda deployment -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -95,6 +97,29 @@
                 <configuration>
                     <createDependencyReducedPom>false</createDependencyReducedPom>
                     <finalName>lambda</finalName>
+                    <filters>
+                        <filter>
+                            <artifact>*:*</artifact>
+                            <excludes>
+                                <exclude>META-INF/*.SF</exclude>
+                                <exclude>META-INF/*.DSA</exclude>
+                                <exclude>META-INF/*.RSA</exclude>
+                                <exclude>io/netty/**</exclude>
+                            </excludes>
+                        </filter>
+                        <filter>
+                            <artifact>software.amazon.awscdk:aws-cdk-lib</artifact>
+                            <excludes>
+                                <exclude>**</exclude>
+                            </excludes>
+                        </filter>
+                        <filter>
+                            <artifact>software.constructs:constructs</artifact>
+                            <excludes>
+                                <exclude>**</exclude>
+                            </excludes>
+                        </filter>
+                    </filters>
                 </configuration>
                 <executions>
                     <execution>
@@ -107,6 +132,7 @@
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>org.uwrf.CdkApp</mainClass>
                                 </transformer>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                             </transformers>
                         </configuration>
                     </execution>
@@ -116,3 +142,4 @@
     </build>
 
 </project>
+
