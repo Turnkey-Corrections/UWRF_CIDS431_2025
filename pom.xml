@@ -93,7 +93,6 @@
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.5.2</version>
                 <configuration>
-                    <createDependencyReducedPom>false</createDependencyReducedPom>
                     <finalName>lambda</finalName>
                 </configuration>
                 <executions>
@@ -115,4 +114,37 @@
         </plugins>
     </build>
 
+	<profiles>
+    	<profile>
+        	<id>lambda</id>
+        	<build>
+            	<plugins>
+                	<plugin>
+                    	<groupId>org.apache.maven.plugins</groupId>
+                    	<artifactId>maven-shade-plugin</artifactId>
+                    	<version>3.5.2</version>
+                    	<executions>
+                        	<execution>
+                            	<phase>package</phase>
+                            	<goals>
+                                	<goal>shade</goal>
+                            	</goals>
+                            	<configuration>
+                                	<finalName>lambda</finalName>
+
+                                	<!-- IMPORTANT: exclude CDK -->
+                                	<artifactSet>
+                                    	<excludes>
+                                        	<exclude>software.amazon.awscdk:*</exclude>
+                                        	<exclude>software.constructs:*</exclude>
+                                    	</excludes>
+                                	</artifactSet>
+                            	</configuration>
+                        	</execution>
+                    	</executions>
+                	</plugin>
+            	</plugins>
+        	</build>
+    	</profile>
+	</profiles>
 </project>

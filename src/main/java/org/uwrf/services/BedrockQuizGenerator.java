@@ -19,7 +19,8 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
  */
 public class BedrockQuizGenerator implements QuizGenerator {
 
-    private static final String MODEL_ID = "anthropic.claude-3-haiku-20240307-v1:0";
+    //Added "us" to the model name and updated the version because errors
+    private static final String MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0";
 
     private final BedrockRuntimeClient bedrockClient;
     private final ObjectMapper objectMapper;
@@ -33,7 +34,8 @@ public class BedrockQuizGenerator implements QuizGenerator {
     public String generateQuiz(String transcript) throws Exception {
         System.out.println("Calling Bedrock (" + MODEL_ID + ") to generate quiz questions...");
 
-        String prompt = "Generate 10 multiple choice questions based on this lecture transcript. " +
+        //Edited because I am passing in example text and not a lecture
+        String prompt = "Generate 10 multiple choice questions based on this text. \"" + transcript + "\". " +
                 "Each question should have 4 options (A, B, C, D) with one correct answer. " +
                 "Return ONLY a JSON array with this exact format:\n" +
                 "[\n" +
@@ -48,7 +50,7 @@ public class BedrockQuizGenerator implements QuizGenerator {
                 "    \"correctAnswer\": \"A\"\n" +
                 "  }\n" +
                 "]\n\n" +
-                "Transcript:\n" + transcript;
+                "Text:\n" + transcript;
 
         // Build the Anthropic Messages API request
         ObjectNode bedrockRequest = objectMapper.createObjectNode();
