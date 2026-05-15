@@ -19,7 +19,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
  */
 public class BedrockQuizGenerator implements QuizGenerator {
 
-    private static final String MODEL_ID = "anthropic.claude-3-haiku-20240307-v1:0";
+    private static final String MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0";
 
     private final BedrockRuntimeClient bedrockClient;
     private final ObjectMapper objectMapper;

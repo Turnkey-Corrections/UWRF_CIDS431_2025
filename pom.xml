@@ -22,6 +22,7 @@
     </properties>
 
     <dependencies>
+        <!-- CDK is only used locally to define infrastructure, never runs inside Lambda -->
         <dependency>
             <groupId>software.amazon.awscdk</groupId>
             <artifactId>aws-cdk-lib</artifactId>
@@ -87,7 +88,20 @@
                     <mainClass>org.uwrf.CdkApp</mainClass>
                 </configuration>
             </plugin>
-            <!-- Build fat JAR for Lambda deployment -->
+            <!-- Set env vars during mvn test so no real AWS calls are made -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <environmentVariables>
+                        <MOCK_TRANSCRIBE>true</MOCK_TRANSCRIBE>
+                        <MOCK_BEDROCK>false</MOCK_BEDROCK>
+                        <MOCK_S3>false</MOCK_S3>
+                    </environmentVariables>
+                </configuration>
+            </plugin>
+        <!-- Build fat JAR for Lambda deployment -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -95,6 +109,13 @@
                 <configuration>
                     <createDependencyReducedPom>false</createDependencyReducedPom>
                     <finalName>lambda</finalName>
+                    <!-- exclude CDK and constructs because they run locally, not inside Lambda -->
+                    <artifactSet>
+                        <excludes>
+                            <exclude>software.amazon.awscdk:aws-cdk-lib</exclude>
+                            <exclude>software.constructs:constructs</exclude>
+                        </excludes>
+                    </artifactSet>
                 </configuration>
                 <executions>
                     <execution>
