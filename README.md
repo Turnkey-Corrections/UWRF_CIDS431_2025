@@ -163,13 +163,13 @@ Each student needs their own AWS account:
 1. **Sign up for AWS** at [aws.amazon.com](https://aws.amazon.com/) using your own email and payment information
 2. **Monitor your usage** to stay within the [AWS Free Tier](https://aws.amazon.com/free/) and avoid unexpected charges
 3. **Create an Access Key** in the AWS Console:
-   - Go to **IAM** → **Users** → Select your user (or create one)
-   - Click **Security credentials** tab
-   - Under **Access keys**, click **Create access key**
-   - Choose **Command Line Interface (CLI)** as your use case
-   - Download or copy both values:
-     - **Access Key ID** (looks like `AKIAIOSFODNN7EXAMPLE`)
-     - **Secret Access Key** (looks like random numbers and letters)
+    - Go to **IAM** → **Users** → Select your user (or create one)
+    - Click **Security credentials** tab
+    - Under **Access keys**, click **Create access key**
+    - Choose **Command Line Interface (CLI)** as your use case
+    - Download or copy both values:
+        - **Access Key ID** (looks like `AKIAIOSFODNN7EXAMPLE`)
+        - **Secret Access Key** (looks like random numbers and letters)
 
 Keep these private! They're like a username and password for AWS.
 
@@ -532,8 +532,8 @@ git push origin master
 2. Click **Contribute** → **Open pull request**
 3. Add a title describing your submission (e.g., "John Smith - Final Project Submission")
 4. In the description, briefly note:
-   - Any challenges you encountered
-   - Any features you added beyond the requirements
+    - Any challenges you encountered
+    - Any features you added beyond the requirements
 5. Click **Create pull request**
 
 Your instructor will review your submission via the pull request.

@@ -1,9 +1,14 @@
 package org.uwrf;
 
 import software.amazon.awscdk.Duration;
+import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
 import software.amazon.awscdk.services.iam.PolicyStatement;
+import software.amazon.awscdk.services.s3.Bucket;
+import software.amazon.awscdk.services.s3.EventType;
+import software.amazon.awscdk.services.s3.NotificationKeyFilter;
+import software.amazon.awscdk.services.s3.notifications.LambdaDestination;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
@@ -33,7 +38,7 @@ public class UwrfStack extends Stack {
                 .description("Processes video uploads and generates quizzes")
                 // Set MOCK_BEDROCK=false when you are ready to use real Bedrock (costs money).
                 // Keep it true during development to use canned quiz responses at zero cost.
-                .environment(Map.of("MOCK_BEDROCK", "true"))
+                .environment(Map.of("MOCK_BEDROCK", "false"))
                 .build();
 
         // TODO: Create an S3 bucket for video uploads
@@ -52,6 +57,28 @@ public class UwrfStack extends Stack {
         // - Call AWS Transcribe
         // - Call AWS Bedrock
         // - Write quiz results back to S3
+
+        Bucket videoBucket = Bucket.Builder.create(this, "VideoBucket")
+                .bucketName(studentName + "-video-bucket")
+                .autoDeleteObjects(true)
+                .removalPolicy(RemovalPolicy.DESTROY)
+                .build();
+
+        videoBucket.addEventNotification(
+                EventType.OBJECT_CREATED,
+                new LambdaDestination(videoHandler),
+                NotificationKeyFilter.builder().suffix(".mp4").build()
+        );
+
+        videoBucket.grantReadWrite(videoHandler);
+
+        videoHandler.addToRolePolicy(PolicyStatement.Builder.create()
+                .actions(List.of(
+                        "transcribe:StartTranscriptionJob",
+                        "transcribe:GetTranscriptionJob"
+                ))
+                .resources(List.of("*"))
+                .build());
 
         videoHandler.addToRolePolicy(PolicyStatement.Builder.create()
                 .actions(List.of(
