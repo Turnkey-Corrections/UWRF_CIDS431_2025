@@ -12,6 +12,14 @@ import software.constructs.Construct;
 import java.util.List;
 import java.util.Map;
 
+import software.amazon.awscdk.RemovalPolicy;
+import software.amazon.awscdk.services.iam.Effect;
+import software.amazon.awscdk.services.s3.Bucket;
+import software.amazon.awscdk.services.s3.EventType;
+import software.amazon.awscdk.services.s3.NotificationKeyFilter;
+import software.amazon.awscdk.services.s3.notifications.LambdaDestination;
+
+
 public class UwrfStack extends Stack {
     private final String studentName;
 
@@ -36,22 +44,34 @@ public class UwrfStack extends Stack {
                 .environment(Map.of("MOCK_BEDROCK", "true"))
                 .build();
 
-        // TODO: Create an S3 bucket for video uploads
-        // Bucket videoBucket = Bucket.Builder.create(this, "VideoBucket")
-        //         .build();
+        // Create an S3 bucket for video uploads
+Bucket videoBucket = Bucket.Builder.create(this, "VideoBucket")
+        .bucketName(studentName.toLowerCase() + "-video-bucket")
+        .removalPolicy(RemovalPolicy.DESTROY)
+        .autoDeleteObjects(true)
+        .build();
 
-        // TODO: Add S3 event notification to trigger Lambda when a video is uploaded
-        // videoBucket.addEventNotification(
-        //         EventType.OBJECT_CREATED,
-        //         new LambdaDestination(videoHandler),
-        //         NotificationKeyFilter.builder().suffix(".mp4").build()
-        // );
+// Add S3 event notification to trigger Lambda when a video is uploaded
+videoBucket.addEventNotification(
+        EventType.OBJECT_CREATED,
+        new LambdaDestination(videoHandler),
+        NotificationKeyFilter.builder().suffix(".mp4").build()
+);
 
-        // TODO: Grant Lambda permissions to:
-        // - Read from the S3 bucket
-        // - Call AWS Transcribe
-        // - Call AWS Bedrock
-        // - Write quiz results back to S3
+// Grant Lambda read/write access to the S3 bucket
+videoBucket.grantReadWrite(videoHandler);
+
+// Grant Lambda permission to call AWS Transcribe
+videoHandler.addToRolePolicy(PolicyStatement.Builder.create()
+        .effect(Effect.ALLOW)
+        .actions(List.of(
+                "transcribe:StartTranscriptionJob",
+                "transcribe:GetTranscriptionJob",
+                "transcribe:ListTranscriptionJobs"
+        ))
+        .resources(List.of("*"))
+        .build());
+
 
         videoHandler.addToRolePolicy(PolicyStatement.Builder.create()
                 .actions(List.of(

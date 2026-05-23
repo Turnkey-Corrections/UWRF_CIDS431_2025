@@ -57,11 +57,7 @@
             <artifactId>s3</artifactId>
             <version>${aws.sdk.version}</version>
         </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>transcribe</artifactId>
-            <version>${aws.sdk.version}</version>
-        </dependency>
+        
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>bedrockruntime</artifactId>
@@ -93,9 +89,21 @@
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.5.2</version>
                 <configuration>
-                    <createDependencyReducedPom>false</createDependencyReducedPom>
-                    <finalName>lambda</finalName>
-                </configuration>
+                <createDependencyReducedPom>false</createDependencyReducedPom>
+                <finalName>lambda</finalName>
+                <minimizeJar>false</minimizeJar>
+                <filters>
+                    <filter>
+                        <artifact>*:*</artifact>
+                        <excludes>
+                            <exclude>META-INF/*.SF</exclude>
+                            <exclude>META-INF/*.DSA</exclude>
+                            <exclude>META-INF/*.RSA</exclude>
+                        </excludes>
+                    </filter>
+                </filters>
+            </configuration>
+
                 <executions>
                     <execution>
                         <phase>package</phase>
